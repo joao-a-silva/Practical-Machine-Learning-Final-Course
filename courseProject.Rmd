@@ -133,7 +133,7 @@ confMatrix
 The accuracy of the two models are:
 
 * Decision Tree : 0.8556   
-* Random Forest : 
+* Random Forest : 0.999 
 
 The Random Forest model is the best model and so it will be applied to predict the 20 quiz cases. The code for this is shown below.
 
