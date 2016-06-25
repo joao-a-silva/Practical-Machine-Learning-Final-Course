@@ -1,0 +1,163 @@
+---
+title: "Practical Machine Learning Final Course - Prediction of the Manner of Doing Exercise of Training Participants"
+author: "Joao A. Silva"
+date: "June 25, 2016"
+output: html_document
+---
+
+## **Background and Project Goal**
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+So, the goal of this project is to predict the manner in which they did the exercise. This is the “classe” variable in the training set. So, I will describe how the model is built, how to cross validates it, evaluate the expected out of sample error, and explain the rationales of any choice made. The prediction model will be used to predict 20 different test cases. 
+
+## **Data and Exploratory Analisys**
+
+### Data Overview 
+The training data for this project are available at https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv and the test data are available at https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+A short description of the dataset content from the authors’ website: “_Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E)_".
+
+### Enviroment Setup
+
+Upload the R libraries that are necessary for complete analysis.
+
+
+```{r}
+library(knitr)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(randomForest)
+library(corrplot)
+set.seed(123)
+```
+### Data Loanding and Cleaning
+
+In this step the dataset is loading from the URL provided above. Then, the training dataset is divided in 2, in order to create a Training set (70% of the data) for the modeling process and a Test set (30% remaining) for the validations. The testing dataset will only be used for the quiz results generation, so  it is not changed at all.
+
+#### Loading the Data
+
+
+```{r}
+# urls for the download
+train <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+test  <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+# download the datasets
+dataTraining <- read.csv(url(train))
+dataTesting  <- read.csv(url(test))
+
+dim(dataTraining)
+dim(dataTesting)
+
+```
+
+#### Cleaning the Data
+Remove the columns 1-5 in the datasets (variables ‘X’, ‘Name’ and ‘timestamps’), and clean off the variables that contain most NAs values.Also remove variables with nearly zero variance.
+
+```{r}
+# remove columns with the most NAs values
+isNA <- colSums(is.na(dataTraining)) == 0
+dataTraining <- dataTraining[, isNA] 
+dataTesting <- dataTesting[, isNA] 
+
+# remove the descriptive columns
+dataTraining <- dataTraining[,-c(1,5)]
+dataTesting <- dataTesting[,-c(1,5)]
+
+# remove variables with Nearly Zero Variance
+zeroVar<- nearZeroVar(dataTraining)
+dataTraining <- dataTraining[, -zeroVar]
+dataTesting  <- dataTesting[, -zeroVar]
+
+dim(dataTraining)
+dim(dataTesting)
+```
+
+### Spliting the Training Dataset
+
+The training dataset is then partinioned in 2, in order to create a training set with 70% of the data. This 70% of the data will be used for the modeling process and the remaining 30% of the data will be used for the validations. Since the testing dataset will only used for the quiz results, then it is not changed at all.
+
+```{r}
+inTrain  <- createDataPartition(dataTraining$classe, p=0.7, list=FALSE)
+trainSet <- dataTraining[inTrain, ]
+valSet  <- dataTraining[-inTrain, ]
+```
+
+
+### Correlation Analisys
+
+Before proceeding to the modeling procedures, a correlation among variables is done. The highly correlated variables are shown in dark colors in the graph bellow. 
+
+```{r}
+trainDataNum <- dataTraining[, sapply(dataTraining, is.numeric)]
+corrplot(cor(trainDataNum[, -57]), order = "FPC", method = "color", tl.cex = 0.5)
+
+```
+
+
+## **Prediction Model Building**
+In order to perform the analisys, two methods will be applied to model the regressions (in the Train dataset).The model with higher accuracy when applied to the validate dataset will be used for the quiz predictions. The methods are: Decision Tree and Random Forests, as described below. A Confusion Matrix is presented to better visualize the accuracy of the models.
+
+
+**a) Method:Decision Tree**
+
+```{r, cache=TRUE}
+# model fit
+fitDecTree <- rpart(classe ~ ., data=trainSet, method="class")
+prp(fitDecTree)
+
+# prediction on Test dataset
+predict <- predict(fitDecTree, newdata=valSet, type="class")
+confMatrix <- confusionMatrix(predict, valSet$classe)
+confMatrix
+```
+
+
+**b) Method: Random Forest**
+
+```{r, cache=TRUE}
+#modelFit
+fitRandForest <- train(classe ~ ., data=trainSet, method="rf")
+fitRandForest$finalModel
+
+# prediction on Validate dataset
+predict<- predict(fitRandForest, newdata=valSet)
+confMatrix <- confusionMatrix(predict, valSet$classe)
+confMatrix
+```
+
+## **Applying the Selected Model to the Test Data**
+
+The accuracy of the two models are:
+
+* Decision Tree : 0.8556   
+* Random Forest : 
+
+The Random Forest model is the best model and so it will be applied to predict the 20 quiz cases. The code for this is shown below.
+
+```{r}
+predict <- predict(fitRandForest, newdata=dataTesting)
+predict
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
